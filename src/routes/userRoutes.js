@@ -1,16 +1,18 @@
-const userController = require('../controllers/userController');
 const express = require('express');
 const router = express.Router();
-const middleware = require('../middleware/authMiddleware');
+const userController = require('../controllers/userController');
+const { validateSignup, validateLogin } = require('../middleware/validateRequest');
+const { loginLimiter, signupLimiter } = require('../middleware/rateLimiter');
+const authMiddleware = require('../middleware/authMiddleware');
 
-// Define routes for user management
-router.use(express.json());
-//redirect to userController
-router.get('/', userController.getAllUsers);
-router.get('/:id', userController.getUserById);
-router.post('/signup', userController.createUser);
-router.post('/login', userController.loginUser);
-router.put('/:id', middleware, userController.updateUser);
-router.delete('/:id', middleware, userController.deleteUser);
+// Public routes
+router.post('/signup', signupLimiter, validateSignup, userController.createUser);
+router.post('/login', loginLimiter, validateLogin, userController.loginUser);
+
+// Protected routes
+router.get('/', authMiddleware, userController.getAllUsers);
+router.get('/:id', authMiddleware, userController.getUserById);
+router.put('/:id', authMiddleware, userController.updateUser);
+router.delete('/:id', authMiddleware, userController.deleteUser);
 
 module.exports = router;

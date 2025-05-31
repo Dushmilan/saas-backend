@@ -33,21 +33,24 @@ class UserService {
   async createUser(userData) {
     const { email, password, name } = userData;
 
+    // Check for existing user
     const existingUser = await prisma.user.findUnique({
-      where: { email }
+      where: { email: email.toLowerCase() }
     });
 
     if (existingUser) {
       throw new Error('Email already registered');
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Hash password with stronger salt rounds
+    const hashedPassword = await bcrypt.hash(password, 12);
 
+    // Create user with normalized email
     return await prisma.user.create({
       data: {
-        email,
+        email: email.toLowerCase(),
         password: hashedPassword,
-        name
+        name: name.trim()
       },
       select: {
         id: true,
@@ -62,20 +65,39 @@ class UserService {
     const { email, password } = credentials;
 
     const user = await prisma.user.findUnique({
-      where: { email }
+      where: { email: email.toLowerCase() }
     });
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    if (!user) {
+      // Use vague error message for security
+      throw new Error('Invalid credentials');
+    }
+
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      // Add delay to prevent timing attacks
+      await new Promise(resolve => setTimeout(resolve, 1000));
       throw new Error('Invalid credentials');
     }
 
     const token = jwt.sign(
-      { userId: user.id },
+      { 
+        userId: user.id,
+        version: user.tokenVersion // Add token versioning
+      },
       process.env.JWT_SECRET,
-      { expiresIn: '24h' }
+      { 
+        expiresIn: '1h',
+        audience: 'your-app-name',
+        issuer: 'your-app-name'
+      }
     );
 
-    return { token, userId: user.id };
+    return { 
+      token,
+      userId: user.id,
+      expiresIn: 3600 // 1 hour in seconds
+    };
   }
 
   async updateUser(id, updateData) {

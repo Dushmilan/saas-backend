@@ -1,12 +1,18 @@
-const userRoutes = require('./userRoutes');
-const productRoutes = require('./productRoutes');
-
-// Importing route modules for user and product management
 const express = require('express');
 const router = express.Router();
-// Define the base route for user and product management
-router.use('/users', userRoutes);
-router.use('/products', productRoutes);
+const userRoutes = require('./userRoutes');
+
+// Mount API routes
+router.use('/api/users', userRoutes);
+
+// Health check
+router.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+// 404 handler - must be last
+router.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
 
 module.exports = router;
-// This file serves as a central point to export all route modules
